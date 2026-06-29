@@ -1,130 +1,169 @@
-# Oleg_ML: Telegram-бот с RAG по Obsidian Vault
+# Oleg_ML
 
-Проект: Telegram-бот, который отправляет вопросы в Flowise, а Flowise отвечает на основе заметок из Obsidian Vault.
+Telegram-бот для ответов на вопросы по заметкам из Obsidian Vault.  
+RAG-пайплайн собран в Flowise, а Telegram-часть написана на Python.
 
-## Архитектура
+## Стек
+
+- Python 3.11+
+- python-telegram-bot
+- Flowise
+- Obsidian Vault
+- Ollama Chat Model
+- Ollama Embeddings
+- FAISS / Vector Store в Flowise
+- Docker Compose для запуска Flowise
+
+## Как это работает
 
 ```text
-Telegram -> python-telegram-bot -> Flowise API -> RAG по Obsidian Vault -> LLM
+Telegram
+  -> Python bot
+  -> Flowise Prediction API
+  -> Retriever по Obsidian Vault
+  -> Ollama Chat Model
+  -> ответ пользователю
 ```
 
-Компоненты:
+Заметки Obsidian используются как база знаний. Flowise разбивает Markdown-файлы на чанки, строит эмбеддинги через Ollama Embeddings и сохраняет их в векторное хранилище. При вопросе пользователя Flowise ищет подходящие фрагменты и передает их в локальную LLM через Ollama Chat Model.
 
-- `Flowise` — визуальная сборка RAG-пайплайна.
-- `Obsidian Vault` — база знаний в Markdown.
-- `python-telegram-bot` — Telegram-интерфейс.
-- `OpenRouter` — LLM API, используется внутри Flowise как OpenAI-compatible endpoint.
+## Структура проекта
 
-Vault:
+```text
+Oleg_ML/
+├── bot/
+│   ├── auth.py
+│   ├── config.py
+│   ├── flowise_client.py
+│   ├── formatters.py
+│   └── main.py
+├── data/
+│   └── .gitkeep
+├── docker-compose.yml
+├── requirements.txt
+├── .env.example
+├── .gitignore
+└── README.md
+```
+
+В репозиторий не добавляются `.env`, `.venv`, `flowise_data/`, `vault/` и файл локально авторизованных пользователей.
+
+## Obsidian Vault
+
+Локальный путь к хранилищу:
 
 ```text
 путь до вашего обсидиана(лучше копировать хранилище в папку с проектом, тк FLOWISE ругается на абсолютные пути
 ```
 
-В Docker он монтируется как:
+В Docker Compose оно монтируется внутрь контейнера Flowise как:
 
 ```text
 /vault
 ```
 
-## Безопасность
-
-В боте есть два способа ограничения доступа:
-
-1. allowlist по Telegram ID:
-
-```env
-ALLOWED_TELEGRAM_USER_IDS=123456789,987654321
-```
-
-2. пароль через команду:
-
-```text
-/auth пароль
-```
-
-После успешной авторизации пользователь сохраняется в `data/authorized_users.json`.
-
-Команды:
-
-- `/start` — стартовое сообщение;
-- `/help` — помощь;
-- `/whoami` — показать Telegram ID;
-- `/auth пароль` — авторизация по паролю;
-- `/logout` — удалить локальную авторизацию.
-
 ## Запуск Flowise
+
+Сначала создать `.env`:
 
 ```bash
 cp .env.example .env
+```
+
+Запустить Flowise:
+
+```bash
 docker compose up -d
 ```
 
-Открыть:
+Открыть интерфейс:
 
 ```text
 http://localhost:3000
 ```
 
-Логин/пароль по умолчанию:
-
-```text
-admin / admin
-```
-
-Их можно поменять в `.env`:
+Логин и пароль Flowise задаются через переменные:
 
 ```env
-FLOWISE_USERNAME=your_login
-FLOWISE_PASSWORD=your_password
+FLOWISE_USERNAME=admin
+FLOWISE_PASSWORD=admin
 ```
 
-## Настройка Chatflow в Flowise
+## Настройка Ollama
 
-Создать новый Chatflow и собрать RAG:
+Для работы нужны две модели:
 
-```text
-Folder with Files -> Markdown Text Splitter -> Embeddings -> Vector Store -> Conversational Retrieval QA Chain
+- модель для эмбеддингов;
+- модель для генерации ответов.
+
+Пример:
+
+```bash
+ollama pull nomic-embed-text
+ollama pull qwen2.5:1.5b
 ```
 
-Рекомендуемые настройки:
+Проверка:
 
-- Folder with Files:
-  - Path: `/vault`
-  - Recursive: enabled
-  - загружать Markdown-файлы
-- Markdown Text Splitter:
-  - Chunk size: `500`
-  - Overlap: `80`
-- Vector Store:
-  - FAISS или встроенное хранилище Flowise
-- Chat Model:
-  - OpenAI-compatible endpoint
-  - Base URL: `https://openrouter.ai/api/v1`
-  - API Key: OpenRouter key
-  - Model: `cohere/north-mini-code:free` или другая доступная модель
+```bash
+ollama list
+```
 
-Если Ollama запущена на хосте, в Docker Compose используется `network_mode: host`.
-Поэтому в Flowise для Ollama можно указывать:
+Если Flowise запущен через Docker Compose из этого проекта, он использует `network_mode: host`. Поэтому в настройках Ollama-узлов в Flowise можно указывать:
 
 ```text
 http://127.0.0.1:11434
 ```
 
-После настройки нажать:
+## Notice
+
+В этом проекте используются локальные модели через Ollama:
+
+- `Ollama Embeddings` для построения эмбеддингов;
+- `Ollama Chat Model` для генерации ответа.
+
+OpenRouter/OpenAI в текущей версии проекта не являются обязательными. Их можно подключить позже, если нужна более сильная модель, но для демонстрации итоговой работы достаточно локального варианта.
+
+Если локальная модель маленькая, ответы могут быть проще и менее точными. Это нормально для учебного прототипа: основная цель проекта — показать связку Telegram + Flowise + RAG + Obsidian Vault.
+
+## Chatflow в Flowise
+
+В Flowise нужно создать chatflow примерно такой структуры:
+
+```text
+Folder with Files
+  -> Markdown Text Splitter
+  -> Ollama Embeddings
+  -> Vector Store / FAISS
+  -> Conversational Retrieval QA Chain
+  -> Ollama Chat Model
+```
+
+Рекомендуемые настройки:
+
+- `Folder with Files`
+  - Path: `/vault`
+  - Recursive: enabled
+  - желательно загружать только Markdown-файлы
+- `Markdown Text Splitter`
+  - Chunk size: `500`
+  - Overlap: `80`
+- `Ollama Embeddings`
+  - Base URL: `http://127.0.0.1:11434`
+  - Model: `nomic-embed-text`
+- `Ollama Chat Model`
+  - Base URL: `http://127.0.0.1:11434`
+  - Model: например `qwen2.5:1.5b`
+- `Vector Store`
+  - FAISS или встроенное хранилище Flowise
+
+После настройки нужно нажать:
 
 ```text
 Upsert Vector Database
 ```
 
-Потом взять `Chatflow ID` из URL или настроек Flowise и вставить его в `.env`:
-
-```env
-FLOWISE_CHATFLOW_ID=your_chatflow_id
-FLOWISE_API_KEY=your_flowise_api_key_if_enabled
-```
-
-Проверка Flowise API:
+После индексации можно проверить API Flowise:
 
 ```bash
 curl -X POST "http://localhost:3000/api/v1/prediction/2fe7a9b2-8c4b-4e51-8d84-5d7358dae682" \
@@ -137,9 +176,9 @@ curl -X POST "http://localhost:3000/api/v1/prediction/2fe7a9b2-8c4b-4e51-8d84-5d
   }'
 ```
 
-## Запуск Telegram-бота
+## Настройка Telegram-бота
 
-Установка зависимостей:
+Установить зависимости:
 
 ```bash
 python3 -m venv .venv
@@ -152,11 +191,15 @@ pip install -r requirements.txt
 ```env
 TELEGRAM_TOKEN=token_from_botfather
 TELEGRAM_PROXY_URL=
+
 FLOWISE_URL=http://localhost:3000
 FLOWISE_CHATFLOW_ID=2fe7a9b2-8c4b-4e51-8d84-5d7358dae682
-FLOWISE_API_KEY=your_flowise_api_key_if_enabled
-BOT_ACCESS_PASSWORD=your_password
+FLOWISE_API_KEY=
+
+BOT_ACCESS_PASSWORD=change_me
 ALLOWED_TELEGRAM_USER_IDS=
+
+REQUEST_TIMEOUT=180
 ```
 
 Запуск:
@@ -165,19 +208,45 @@ ALLOWED_TELEGRAM_USER_IDS=
 python -m bot.main
 ```
 
-Если Telegram API доступен только через VPN или proxy, можно указать proxy:
+Если Telegram работает только через proxy/VPN, можно указать SOCKS proxy:
 
 ```env
-TELEGRAM_PROXY_URL=socks5://127.0.0.1:1080
+TELEGRAM_PROXY_URL=socks5h://127.0.0.1:10808
 ```
 
-или HTTP-proxy:
+`socks5h` удобен тем, что DNS-запросы тоже идут через proxy.
+
+## Безопасность
+
+В боте есть два простых способа ограничения доступа.
+
+Первый способ — allowlist по Telegram ID:
 
 ```env
-TELEGRAM_PROXY_URL=http://127.0.0.1:8080
+ALLOWED_TELEGRAM_USER_IDS=123456789,987654321
 ```
 
-После изменения `.env` бот нужно перезапустить.
+Второй способ — пароль:
+
+```text
+/auth пароль
+```
+
+После успешной авторизации пользователь сохраняется локально в:
+
+```text
+data/authorized_users.json
+```
+
+Этот файл не добавляется в git.
+
+Команды бота:
+
+- `/start` — стартовое сообщение;
+- `/help` — помощь;
+- `/whoami` — показать Telegram ID;
+- `/auth пароль` — получить доступ;
+- `/logout` — удалить локальную авторизацию.
 
 ## Память диалога
 
@@ -187,16 +256,31 @@ TELEGRAM_PROXY_URL=http://127.0.0.1:8080
 telegram_<user_id>
 ```
 
-Если в Flowise включена память, бот будет помнить контекст отдельно для каждого пользователя.
+Если в Flowise включена память, история диалога будет разделяться по пользователям.
 
-## Форматирование ответов
+## Пример запроса к боту
 
-Бот отправляет ответы в Telegram с HTML-разметкой. Если Flowise возвращает источники, бот добавляет их в конец сообщения.
+Пользователь пишет в Telegram:
+
+```text
+Что такое SQL injection?
+```
+
+Бот отправляет вопрос в Flowise, Flowise ищет релевантные заметки в Obsidian Vault и возвращает ответ на основе найденного контекста.
+
+## Ограничения
+
+- качество ответа зависит от локальной модели Ollama;
+- если заметок мало, RAG может не найти хороший контекст;
+- при большой модели ответы могут генерироваться долго;
+- после изменения заметок нужно заново выполнить `Upsert Vector Database`;
+- Flowise chatflow настраивается через веб-интерфейс и не хранится полностью в коде проекта.
 
 ## Возможные улучшения
 
-- добавить Dockerfile для самого Telegram-бота;
+- добавить Dockerfile для Telegram-бота;
 - запускать Flowise и бота одним `docker compose`;
-- добавить команды `/reset` для сброса истории;
-- добавить логирование вопросов и ответов в файл;
-- добавить роли пользователей: admin/user.
+- добавить команду `/reset` для сброса истории;
+- сохранять логи вопросов и ответов в файл;
+- добавить роли пользователей: admin/user;
+- подключить более сильную модель через OpenRouter или другой API.
