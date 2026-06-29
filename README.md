@@ -18,7 +18,7 @@ Telegram -> python-telegram-bot -> Flowise API -> RAG по Obsidian Vault -> LLM
 Vault:
 
 ```text
-/home/k0st0vsk7/Documents/Obsidian Vault/my-obsidian-vault
+путь до вашего обсидиана(лучше копировать хранилище в папку с проектом, тк FLOWISE ругается на абсолютные пути
 ```
 
 В Docker он монтируется как:
