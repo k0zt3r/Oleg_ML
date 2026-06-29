@@ -1,0 +1,17 @@
+services:
+  flowise:
+    image: flowiseai/flowise:latest
+    container_name: oleg_ml_flowise
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - PORT=3000
+      - FLOWISE_USERNAME=${FLOWISE_USERNAME:-admin}
+      - FLOWISE_PASSWORD=${FLOWISE_PASSWORD:-admin}
+      - DATABASE_PATH=/root/.flowise
+      - APIKEY_PATH=/root/.flowise
+      - SECRETKEY_PATH=/root/.flowise
+      - LOG_PATH=/root/.flowise/logs
+    volumes:
+      - ./flowise_data:/root/.flowise
+      - "/home/k0st0vsk7/Documents/Obsidian Vault/my-obsidian-vault:/vault:ro"
