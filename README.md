@@ -157,6 +157,9 @@ Folder with Files
 - `Vector Store`
   - FAISS или встроенное хранилище Flowise
 
+Пример того, как это должно выглядеть:
+<img width="1147" height="843" alt="изображение" src="https://github.com/user-attachments/assets/3b50207d-ab7e-4d95-9653-6ef4d2dedc57" />
+
 После настройки нужно нажать:
 
 ```text
