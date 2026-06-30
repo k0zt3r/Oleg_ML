@@ -166,7 +166,7 @@ Upsert Vector Database
 После индексации можно проверить API Flowise:
 
 ```bash
-curl -X POST "http://localhost:3000/api/v1/prediction/2fe7a9b2-8c4b-4e51-8d84-5d7358dae682" \
+curl -X POST "http://localhost:3000/api/v1/prediction/flowise_chatflow_uuid" \
   -H "Content-Type: application/json" \
   -d '{
     "question": "Что такое SQL injection?",
