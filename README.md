@@ -100,7 +100,7 @@ FLOWISE_PASSWORD=admin
 
 ```bash
 ollama pull nomic-embed-text
-ollama pull qwen2.5:1.5b
+ollama pull qwen3.5:2b
 ```
 
 Проверка:
